@@ -1,5 +1,5 @@
 import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig } from 'homebridge';
-import { credentialsPath, readCredentials } from '../../../player/credentialsFile.ts';
+import { readPairedPlayer } from '../../../player/pairedPlayerFile.ts';
 import { watchChannel } from '../application/watchChannel.ts';
 import type { Player } from '../domain/player.ts';
 import { AndroidTvPlayer } from '../infrastructure/androidTvPlayer.ts';
@@ -13,7 +13,6 @@ interface ChannelConfig {
 }
 
 interface FreeboxPopConfig extends PlatformConfig {
-  host?: string;
   channels?: ChannelConfig[];
 }
 
@@ -36,20 +35,14 @@ export class ChannelSwitchPlatform implements DynamicPlatformPlugin {
   }
 
   private async start(): Promise<void> {
-    const { host, channels = [] } = this.config;
-    if (!host) return this.log.error('No player host configured');
+    const pairedPlayer = await readPairedPlayer(this.api.user.storagePath());
+    if (!pairedPlayer) return this.log.error('Not paired with a player yet: open the plugin settings to pair');
 
-    const storagePath = this.api.user.storagePath();
-    const credentials = await readCredentials(storagePath);
-    if (!credentials) {
-      return this.log.error(`No pairing found in ${credentialsPath(storagePath)}, run: freebox-pop-pair ${host}`);
-    }
-
-    const player = new AndroidTvPlayer(host, credentials, this.log);
+    const player = new AndroidTvPlayer(pairedPlayer.host, pairedPlayer.credentials, this.log);
     player.connect();
     this.api.on('shutdown', () => player.close());
 
-    const accessories = channels.map((channel) => this.exposeChannelSwitch(player, channel));
+    const accessories = (this.config.channels ?? []).map((channel) => this.exposeChannelSwitch(player, channel));
     this.unregisterAccessoriesNotIn(accessories);
   }
 

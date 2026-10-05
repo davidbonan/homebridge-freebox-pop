@@ -44,24 +44,32 @@ Copy the `.tgz` to the Homebridge machine, then, from the Homebridge storage fol
 npm install /path/to/homebridge-freebox-pop-0.1.0.tgz
 ```
 
-## Pair with the player
+## Set up in the Homebridge UI
 
-Pairing is done once. With the TV on, run on the Homebridge machine:
+Open the plugin settings in the Homebridge UI. Everything is done from that screen.
 
-```sh
-npx freebox-pop-pair <player-ip>
-```
+**1. Pair with the player** (once, with the TV on)
 
-The TV shows a 6-character code; type it in the terminal. The pairing is saved to `freebox-pop-credentials.json` in the Homebridge storage folder. If your storage folder is not `/var/lib/homebridge`, pass it as a second argument.
+1. Click **Search the network** and pick your player in the list. If it is not found, type its IP address.
+2. Click **Pair**. The TV shows a 6-character code.
+3. Type the code and click **Confirm**. The screen now reads "Paired with …".
 
-## Configure
+A wrong code ends the attempt: click **Pair** again to get a new one. The pairing (player address and keys) is stored in `freebox-pop-player.json` in the Homebridge storage folder, not in `config.json`.
 
-Add the platform to the Homebridge `config.json` (or use the settings form in the Homebridge UI), then restart Homebridge:
+**2. Add your channels**
+
+Under **Channels**, add one entry per channel, then **Save** and restart Homebridge.
+
+| Field | Meaning |
+|---|---|
+| Switch name | Name of the switch in HomeKit. |
+| OQEE channel id | OQEE's id for the channel. This is **not** the channel number on the remote. |
+
+The resulting `config.json` block:
 
 ```json
 {
   "platform": "FreeboxPop",
-  "host": "192.168.1.50",
   "channels": [
     { "name": "TF1", "oqeeChannelId": 536 },
     { "name": "France 2", "oqeeChannelId": 270 },
@@ -70,12 +78,6 @@ Add the platform to the Homebridge `config.json` (or use the settings form in th
   ]
 }
 ```
-
-| Field | Meaning |
-|---|---|
-| `host` | IP address or hostname of the player. |
-| `channels[].name` | Name of the switch in HomeKit. |
-| `channels[].oqeeChannelId` | OQEE's id for the channel. This is **not** the channel number on the remote. |
 
 ### Finding a channel id
 
@@ -92,7 +94,7 @@ All messages are in the Homebridge log, prefixed with `[FreeboxPop]`.
 
 | Log message | Meaning |
 |---|---|
-| `No pairing found in …` | Run `freebox-pop-pair`, then restart Homebridge. |
+| `Not paired with a player yet` | Pair from the plugin settings, then restart Homebridge. |
 | `Player … connection lost, reconnecting` | Normal when the player sleeps deeply or reboots. Reconnection is automatic. |
 | `attempt N failed, retrying` + `player unreachable` | The player is off the network: check standby mode and the IP address. |
 | `gave up` + `OQEE did not come to the foreground` | The link was sent but OQEE did not open. |
@@ -103,8 +105,13 @@ Both come from documentation and other people's reports, not from a test on a re
 
 - **The channel link.** `https://oq.ee/channel/<id>/play` is the format discussed in [Freebox bug 37971](https://dev.freebox.fr/bugs/task/37971), reported fixed by Free in April 2023.
 - **The on-screen app report.** Step 4 relies on the player announcing which app is in the foreground.
+- **Network search.** It looks for the `_androidtvremote2._tcp` mDNS service; whether the Pop advertises it is unconfirmed. Typing the address always works.
 
-Known limit: the plugin can confirm that OQEE is on screen, not which channel is playing.
+## Limitations
+
+- **One player only.** The plugin drives a single Freebox Pop player. The network search lists every player in the house, but pairing a second one replaces the first, and all channel switches target the paired player.
+- **The channel itself is not verified.** The plugin can confirm that OQEE is on screen, not which channel is playing.
+- **Deep standby cannot be woken.** A player in deep standby is off the network; use light standby.
 
 ## Development
 
@@ -122,7 +129,11 @@ src/channels/watching/
   application/     watchChannel: the retried sequence
   infrastructure/  Android TV Remote session (TLS, reconnection)
   ui/              Homebridge platform and switches
-src/player/        pairing CLI and stored credentials
+src/player/
+  discovery/       mDNS search for players
+  pairing/         pairing with a player
+  settingsUi/      settings screen shown in the Homebridge UI
+  pairedPlayerFile.ts
 ```
 
 Message encoding and pairing come from [`androidtv-remote`](https://github.com/louis49/androidtv-remote). The connection itself is handled here, because that library stops reconnecting once the player becomes unreachable.

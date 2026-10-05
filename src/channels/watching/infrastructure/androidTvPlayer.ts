@@ -3,7 +3,7 @@ import tls from 'node:tls';
 import remoteMessages from 'androidtv-remote/dist/remote/RemoteMessageManager.js';
 import type { RemoteMessage } from 'androidtv-remote/dist/remote/RemoteMessageManager.js';
 import type { Logging } from 'homebridge';
-import type { PlayerCredentials } from '../../../player/credentialsFile.ts';
+import type { PlayerCredentials } from '../../../player/pairedPlayerFile.ts';
 import { PlayerTimeout, PlayerUnreachable } from '../domain/player.ts';
 import type { Player, PlayerState, Wait } from '../domain/player.ts';
 import { splitFrames } from './remoteMessageFrames.ts';

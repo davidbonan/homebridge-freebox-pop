@@ -29,6 +29,7 @@ declare module 'androidtv-remote/dist/pairing/PairingManager.js' {
     constructor(host: string, port: number, credentials: { key: string; cert: string }, serviceName: string);
     start(): Promise<boolean>;
     sendCode(code: string): boolean;
+    client?: { destroy(): void };
   }
 
   const exported: { PairingManager: typeof PairingManager };

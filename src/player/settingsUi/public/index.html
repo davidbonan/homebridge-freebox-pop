@@ -1,0 +1,103 @@
+<div class="card card-body mb-3">
+  <h5 class="mb-1">Player</h5>
+  <p id="status" class="text-muted mb-3"></p>
+
+  <div id="hostStep">
+    <label for="host" class="form-label">Player address</label>
+    <div class="input-group mb-2">
+      <input id="host" type="text" class="form-control" placeholder="192.168.1.50" autocomplete="off">
+      <button id="discover" type="button" class="btn btn-secondary">Search the network</button>
+    </div>
+    <div id="players" class="mb-3"></div>
+    <button id="requestCode" type="button" class="btn btn-primary">Pair</button>
+  </div>
+
+  <div id="codeStep" hidden>
+    <label for="code" class="form-label">Code shown on the TV</label>
+    <div class="input-group mb-2">
+      <input id="code" type="text" class="form-control" maxlength="6" autocomplete="off">
+      <button id="confirmCode" type="button" class="btn btn-primary">Confirm</button>
+      <button id="cancelPairing" type="button" class="btn btn-secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const PLATFORM = 'FreeboxPop';
+  const element = (id) => document.getElementById(id);
+
+  async function showChannelsForm() {
+    const config = await homebridge.getPluginConfig();
+    if (config.length === 0) await homebridge.updatePluginConfig([{ platform: PLATFORM, channels: [] }]);
+    homebridge.showSchemaForm();
+  }
+
+  async function showPairedHost() {
+    const pairedHost = await homebridge.request('/pairing/paired-host');
+    element('host').value = pairedHost ?? '';
+    element('status').textContent = pairedHost ? `Paired with ${pairedHost}.` : 'Not paired yet.';
+    element('requestCode').textContent = pairedHost ? 'Pair again' : 'Pair';
+  }
+
+  function showCodeStep(isAskingCode) {
+    element('hostStep').hidden = isAskingCode;
+    element('codeStep').hidden = !isAskingCode;
+    if (isAskingCode) element('code').focus();
+  }
+
+  function listPlayers(players) {
+    element('players').replaceChildren(...players.map((player) => {
+      const choice = document.createElement('button');
+      choice.type = 'button';
+      choice.className = 'btn btn-outline-primary d-block w-100 text-start mb-1';
+      choice.textContent = `${player.name} — ${player.host}`;
+      choice.addEventListener('click', () => { element('host').value = player.host; });
+      return choice;
+    }));
+  }
+
+  async function withSpinner(action) {
+    homebridge.showSpinner();
+    try {
+      await action();
+    } catch (error) {
+      homebridge.toast.error(error.message);
+    } finally {
+      homebridge.hideSpinner();
+    }
+  }
+
+  element('discover').addEventListener('click', () => withSpinner(async () => {
+    const players = await homebridge.request('/players/discover');
+    listPlayers(players);
+    if (players.length === 0) homebridge.toast.warning('No player found. Is it awake? You can type its address.');
+  }));
+
+  element('requestCode').addEventListener('click', () => withSpinner(async () => {
+    const host = element('host').value.trim();
+    if (!host) throw new Error('Enter the player address or search the network first');
+    await homebridge.request('/pairing/request-code', { host });
+    element('code').value = '';
+    showCodeStep(true);
+  }));
+
+  element('confirmCode').addEventListener('click', () => withSpinner(async () => {
+    try {
+      await homebridge.request('/pairing/confirm', { code: element('code').value });
+    } finally {
+      showCodeStep(false);
+    }
+    await showPairedHost();
+    homebridge.toast.success('Paired. Add your channels, save, then restart Homebridge.');
+  }));
+
+  element('cancelPairing').addEventListener('click', () => withSpinner(async () => {
+    await homebridge.request('/pairing/cancel');
+    showCodeStep(false);
+  }));
+
+  homebridge.addEventListener('ready', async () => {
+    await showPairedHost();
+    await showChannelsForm();
+  });
+</script>

@@ -2,15 +2,11 @@
   "pluginAlias": "FreeboxPop",
   "pluginType": "platform",
   "singular": true,
+  "customUi": true,
+  "customUiPath": "./dist/player/settingsUi",
   "schema": {
     "type": "object",
     "properties": {
-      "host": {
-        "title": "Player address",
-        "type": "string",
-        "required": true,
-        "description": "IP or hostname of the Freebox Pop player. Give it a static DHCP lease."
-      },
       "channels": {
         "title": "Channels",
         "type": "array",
