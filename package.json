@@ -1,0 +1,40 @@
+{
+  "name": "homebridge-freebox-pop",
+  "displayName": "Freebox Pop",
+  "version": "0.1.0",
+  "description": "HomeKit switches that wake a Freebox Pop player and tune it to a TV channel, with retries.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "freebox-pop-pair": "dist/player/pairing/pairCli.js"
+  },
+  "files": [
+    "dist",
+    "config.schema.json"
+  ],
+  "keywords": [
+    "homebridge-plugin",
+    "freebox",
+    "freebox-pop",
+    "oqee"
+  ],
+  "engines": {
+    "node": ">=22.18.0",
+    "homebridge": "^1.8.0 || ^2.0.0"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "androidtv-remote": "^1.0.10"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "homebridge": "^2.4.0",
+    "typescript": "^5.8.0"
+  },
+  "license": "ISC"
+}

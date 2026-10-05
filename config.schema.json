@@ -1,0 +1,36 @@
+{
+  "pluginAlias": "FreeboxPop",
+  "pluginType": "platform",
+  "singular": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "host": {
+        "title": "Player address",
+        "type": "string",
+        "required": true,
+        "description": "IP or hostname of the Freebox Pop player. Give it a static DHCP lease."
+      },
+      "channels": {
+        "title": "Channels",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Switch name",
+              "type": "string",
+              "required": true
+            },
+            "oqeeChannelId": {
+              "title": "OQEE channel id",
+              "type": "integer",
+              "required": true,
+              "description": "The id in https://oq.ee/channel/<id>/play (TF1 is 536)."
+            }
+          }
+        }
+      }
+    }
+  }
+}
