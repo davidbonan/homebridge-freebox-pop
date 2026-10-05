@@ -4,7 +4,7 @@ Homebridge plugin for a **Freebox Pop player**. It exposes one HomeKit switch pe
 
 It is built to be left alone: the connection to the player is kept alive and repaired in the background, and every command is retried until it is confirmed.
 
-> **Status: prototype.** Pairing, network search and channel switching are confirmed on a real Freebox Pop. See [Not yet validated](#not-yet-validated) for what is left.
+> **Status: prototype.** Pairing, network search, channel switching, the power switch and the iPhone remote are confirmed on a real Freebox Pop. See [Not yet validated](#not-yet-validated) for what is left.
 
 ## What the switches do
 
@@ -61,13 +61,13 @@ The plugin is not on npm yet. Build a package and install it by hand:
 git clone https://github.com/davidbonan/homebridge-freebox-pop.git
 cd homebridge-freebox-pop
 npm install
-npm pack                      # produces homebridge-freebox-pop-0.3.0.tgz
+npm pack                      # produces homebridge-freebox-pop-0.3.1.tgz
 ```
 
 Copy the `.tgz` to the Homebridge machine, then, from the Homebridge storage folder (`/var/lib/homebridge` on the official Raspberry Pi image):
 
 ```sh
-npm install /path/to/homebridge-freebox-pop-0.3.0.tgz
+npm install /path/to/homebridge-freebox-pop-0.3.1.tgz
 ```
 
 ## Set up in the Homebridge UI
@@ -127,11 +127,10 @@ All messages are in the Homebridge log, prefixed with `[FreeboxPop]`.
 
 ## Not yet validated
 
-- **Waking from standby.** Tuning a channel and turning the power switch on while the player sleeps.
-- **The power switch** as a whole, including whether the player stays reachable in light standby.
-- **The television and iPhone remote**: keys, volume and inputs have not been tried on a player yet.
+- **Waking after a long standby.** Whether the player stays reachable after a night in light standby.
+- **The television's volume buttons and inputs.** The remote drives the player, but these two have not been checked one by one.
 
-Confirmed on a real player: the channel link `https://oq.ee/channel/<id>/play` (the format from [Freebox bug 37971](https://dev.freebox.fr/bugs/task/37971)), the on-screen app report, and the network search.
+Confirmed on a real player: the channel link `https://oq.ee/channel/<id>/play` (the format from [Freebox bug 37971](https://dev.freebox.fr/bugs/task/37971)), the on-screen app report, the network search, the power switch in both directions, and the television in the iPhone remote.
 
 ## Limitations
 
@@ -164,7 +163,7 @@ src/player/
   pairedPlayerFile.ts
 ```
 
-Message encoding and pairing come from [`androidtv-remote`](https://github.com/louis49/androidtv-remote). The connection itself is handled here, because that library stops reconnecting once the player becomes unreachable.
+The plugin speaks the Android TV Remote protocol itself: the TLS session, its reconnection, pairing and the client certificate are all in `src/player`. The message definitions are a subset of those published by [`androidtv-remote`](https://github.com/louis49/androidtv-remote) (MIT).
 
 ## License
 

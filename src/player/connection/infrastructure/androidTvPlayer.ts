@@ -1,38 +1,17 @@
 import { EventEmitter } from 'node:events';
 import tls from 'node:tls';
-import remoteMessages from 'androidtv-remote/dist/remote/RemoteMessageManager.js';
-import type { RemoteMessage } from 'androidtv-remote/dist/remote/RemoteMessageManager.js';
 import type { Logging } from 'homebridge';
 import type { PlayerCredentials } from '../../pairedPlayerFile.ts';
 import { PlayerTimeout, PlayerUnreachable } from '../domain/player.ts';
 import type { Player, PlayerKey, PlayerState, Wait } from '../domain/player.ts';
 import { splitFrames } from './remoteMessageFrames.ts';
-
-const { remoteMessageManager } = remoteMessages;
-const { RemoteDirection, RemoteKeyCode } = remoteMessageManager;
+import { configureMessage, keyPress, linkLaunch, pingResponse, readRemoteMessage, setActiveMessage } from './remoteMessages.ts';
+import type { ReceivedRemoteMessage } from './remoteMessages.ts';
 
 const REMOTE_PORT = 6466;
-const ACTIVE_FEATURES = 622;
 const SILENCE_LIMIT_MS = 15_000;
 const RECONNECT_MIN_MS = 1_000;
 const RECONNECT_MAX_MS = 10_000;
-const KEY_CODES: Record<PlayerKey, number> = {
-  power: RemoteKeyCode.KEYCODE_POWER,
-  up: RemoteKeyCode.KEYCODE_DPAD_UP,
-  down: RemoteKeyCode.KEYCODE_DPAD_DOWN,
-  left: RemoteKeyCode.KEYCODE_DPAD_LEFT,
-  right: RemoteKeyCode.KEYCODE_DPAD_RIGHT,
-  select: RemoteKeyCode.KEYCODE_DPAD_CENTER,
-  back: RemoteKeyCode.KEYCODE_BACK,
-  playPause: RemoteKeyCode.KEYCODE_MEDIA_PLAY_PAUSE,
-  info: RemoteKeyCode.KEYCODE_INFO,
-  rewind: RemoteKeyCode.KEYCODE_MEDIA_REWIND,
-  fastForward: RemoteKeyCode.KEYCODE_MEDIA_FAST_FORWARD,
-  next: RemoteKeyCode.KEYCODE_MEDIA_NEXT,
-  previous: RemoteKeyCode.KEYCODE_MEDIA_PREVIOUS,
-  volumeUp: RemoteKeyCode.KEYCODE_VOLUME_UP,
-  volumeDown: RemoteKeyCode.KEYCODE_VOLUME_DOWN,
-};
 const UNREACHABLE: PlayerState = { isReady: false, isPowered: false, foregroundApp: undefined };
 
 export class AndroidTvPlayer implements Player {
@@ -110,11 +89,11 @@ export class AndroidTvPlayer implements Player {
   }
 
   pressKey(key: PlayerKey): Promise<void> {
-    return this.send(remoteMessageManager.createRemoteKeyInject(RemoteDirection.SHORT, KEY_CODES[key]));
+    return this.send(keyPress(key));
   }
 
   openLink(link: string): Promise<void> {
-    return this.send(remoteMessageManager.createRemoteRemoteAppLinkLaunchRequest(link));
+    return this.send(linkLaunch(link));
   }
 
   private send(message: Uint8Array): Promise<void> {
@@ -127,23 +106,23 @@ export class AndroidTvPlayer implements Player {
 
   private receiveFrames(socket: tls.TLSSocket, frames: Buffer[]): void {
     try {
-      for (const frame of frames) this.receive(socket, remoteMessageManager.parse(frame));
+      for (const frame of frames) this.receive(socket, readRemoteMessage(frame));
     } catch (error) {
       socket.destroy(new Error('unreadable message from player', { cause: error }));
     }
   }
 
-  private receive(socket: tls.TLSSocket, message: RemoteMessage): void {
+  private receive(socket: tls.TLSSocket, message: ReceivedRemoteMessage): void {
     if (message.remoteConfigure) {
-      socket.write(remoteMessageManager.createRemoteConfigure());
+      socket.write(configureMessage());
     } else if (message.remoteSetActive) {
-      socket.write(remoteMessageManager.createRemoteSetActive(ACTIVE_FEATURES));
+      socket.write(setActiveMessage());
     } else if (message.remotePingRequest) {
-      socket.write(remoteMessageManager.createRemotePingResponse(message.remotePingRequest.val1));
+      socket.write(pingResponse(message.remotePingRequest.val1 ?? 0));
     } else if (message.remoteStart) {
-      this.markReady(message.remoteStart.started);
+      this.markReady(message.remoteStart.started ?? false);
     } else if (message.remoteImeKeyInject) {
-      const foregroundApp = message.remoteImeKeyInject.appInfo?.appPackage ?? undefined;
+      const foregroundApp = message.remoteImeKeyInject.appInfo?.appPackage;
       this.update({ ...this.current, foregroundApp });
     }
   }
