@@ -1,6 +1,6 @@
 import type { API } from 'homebridge';
-import { ChannelSwitchPlatform, PLATFORM_NAME } from './channels/watching/ui/channelSwitchPlatform.ts';
+import { FreeboxPopPlatform, PLATFORM_NAME } from './freeboxPopPlatform.ts';
 
 export default (api: API): void => {
-  api.registerPlatform(PLATFORM_NAME, ChannelSwitchPlatform);
+  api.registerPlatform(PLATFORM_NAME, FreeboxPopPlatform);
 };

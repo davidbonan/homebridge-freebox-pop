@@ -1,12 +1,14 @@
 # homebridge-freebox-pop
 
-Homebridge plugin that exposes one HomeKit switch per TV channel for a **Freebox Pop player**. Turning a switch on wakes the player and tunes it to that channel, so a HomeKit automation can say "at 8 pm, put TF1 on".
+Homebridge plugin for a **Freebox Pop player**. It exposes one HomeKit switch per TV channel, and one power switch. Turning a channel switch on wakes the player and tunes it to that channel, so a HomeKit automation can say "at 8 pm, put TF1 on"; turning the power switch off puts the player to sleep.
 
 It is built to be left alone: the connection to the player is kept alive and repaired in the background, and every command is retried until it is confirmed.
 
-> **Status: prototype.** Tested against a simulated player only. Two points still need a real Freebox Pop to confirm, see [Not yet validated](#not-yet-validated).
+> **Status: prototype.** Pairing, network search and channel switching are confirmed on a real Freebox Pop. See [Not yet validated](#not-yet-validated) for what is left.
 
-## What a switch does
+## What the switches do
+
+### Channel switches
 
 When a channel switch is turned on:
 
@@ -17,7 +19,18 @@ When a channel switch is turned on:
 
 If any step fails, the whole sequence is retried, up to 4 attempts with a growing pause. The switch turns itself back off when the sequence ends, whether it succeeded or gave up. The outcome is written to the Homebridge log.
 
-Turning on another channel while one is in progress cancels the first. Turning a switch off cancels its sequence.
+Turning a channel switch off cancels its sequence.
+
+### Power switch
+
+A switch named **Freebox Player** follows the player: on when it is awake, off when it sleeps.
+
+- Turning it **off** puts the player to sleep. With HDMI-CEC enabled, the TV turns off with it.
+- Turning it **on** wakes the player without changing what is on screen.
+
+Power is a toggle key on the remote, so the plugin only presses it when the player is not already in the requested state. The same retries apply.
+
+Only one command runs at a time: a new one, from any switch, cancels the one in progress.
 
 ## Requirements
 
@@ -101,11 +114,10 @@ All messages are in the Homebridge log, prefixed with `[FreeboxPop]`.
 
 ## Not yet validated
 
-Both come from documentation and other people's reports, not from a test on a real player:
+- **Waking from standby.** Tuning a channel and turning the power switch on while the player sleeps.
+- **The power switch** as a whole, including whether the player stays reachable in light standby.
 
-- **The channel link.** `https://oq.ee/channel/<id>/play` is the format discussed in [Freebox bug 37971](https://dev.freebox.fr/bugs/task/37971), reported fixed by Free in April 2023.
-- **The on-screen app report.** Step 4 relies on the player announcing which app is in the foreground.
-- **Network search.** It looks for the `_androidtvremote2._tcp` mDNS service; whether the Pop advertises it is unconfirmed. Typing the address always works.
+Confirmed on a real player: the channel link `https://oq.ee/channel/<id>/play` (the format from [Freebox bug 37971](https://dev.freebox.fr/bugs/task/37971)), the on-screen app report, and the network search.
 
 ## Limitations
 
@@ -124,15 +136,16 @@ npm run build       # compiles to dist/
 The code is organised by feature, then by layer:
 
 ```
+src/freeboxPopPlatform.ts   Homebridge platform: the HomeKit switches
 src/channels/watching/
-  domain/          Player contract, OQEE link
-  application/     watchChannel: the retried sequence
-  infrastructure/  Android TV Remote session (TLS, reconnection)
-  ui/              Homebridge platform and switches
+  domain/                   OQEE link
+  application/              watchChannel: wake, open the channel, check
 src/player/
-  discovery/       mDNS search for players
-  pairing/         pairing with a player
-  settingsUi/      settings screen shown in the Homebridge UI
+  connection/               Player contract, retries, Android TV Remote session
+  power/                    wake and sleep, turnPlayerOn / turnPlayerOff
+  discovery/                mDNS search for players
+  pairing/                  pairing with a player
+  settingsUi/               settings screen shown in the Homebridge UI
   pairedPlayerFile.ts
 ```
 

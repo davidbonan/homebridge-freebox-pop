@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { splitFrames } from '../../../src/channels/watching/infrastructure/remoteMessageFrames.ts';
+import { splitFrames } from '../../../src/player/connection/infrastructure/remoteMessageFrames.ts';
 
 test('splits frames received in one chunk and keeps the unfinished one', () => {
   const received = Buffer.from([2, 0xaa, 0xbb, 1, 0xcc, 3, 0xdd]);

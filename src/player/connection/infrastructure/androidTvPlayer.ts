@@ -3,7 +3,7 @@ import tls from 'node:tls';
 import remoteMessages from 'androidtv-remote/dist/remote/RemoteMessageManager.js';
 import type { RemoteMessage } from 'androidtv-remote/dist/remote/RemoteMessageManager.js';
 import type { Logging } from 'homebridge';
-import type { PlayerCredentials } from '../../../player/pairedPlayerFile.ts';
+import type { PlayerCredentials } from '../../pairedPlayerFile.ts';
 import { PlayerTimeout, PlayerUnreachable } from '../domain/player.ts';
 import type { Player, PlayerState, Wait } from '../domain/player.ts';
 import { splitFrames } from './remoteMessageFrames.ts';
@@ -61,7 +61,11 @@ export class AndroidTvPlayer implements Player {
     return this.current;
   }
 
-  waitUntil(isReached: (state: PlayerState) => boolean, { timeoutMs, signal }: Wait): Promise<void> {
+  onStateChange(listener: (state: PlayerState) => void): void {
+    this.changes.on('change', () => listener(this.current));
+  }
+
+  waitUntil(isReached: (state: PlayerState) => boolean, { timeoutMs, signal, failure }: Wait): Promise<void> {
     if (isReached(this.current)) return Promise.resolve();
     return new Promise((resolve, reject) => {
       const stopWaiting = () => {
@@ -80,7 +84,7 @@ export class AndroidTvPlayer implements Player {
       };
       const timer = setTimeout(() => {
         stopWaiting();
-        reject(new PlayerTimeout());
+        reject(new PlayerTimeout(failure));
       }, timeoutMs);
       this.changes.on('change', onChange);
       signal.addEventListener('abort', onAbort);

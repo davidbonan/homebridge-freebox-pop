@@ -1,22 +1,13 @@
-import { OQEE_APP } from '../../../src/channels/watching/domain/oqee.ts';
-import { PlayerTimeout, PlayerUnreachable } from '../../../src/channels/watching/domain/player.ts';
-import type { Player, PlayerState } from '../../../src/channels/watching/domain/player.ts';
-import type { WatchPolicy, WatchRequest } from '../../../src/channels/watching/application/watchChannel.ts';
+import { OQEE_APP } from '../../src/channels/watching/domain/oqee.ts';
+import { PlayerTimeout, PlayerUnreachable } from '../../src/player/connection/domain/player.ts';
+import type { Player, PlayerState, Wait } from '../../src/player/connection/domain/player.ts';
+import type { CommandRun } from '../../src/player/connection/domain/retriedCommand.ts';
 
-export const TF1 = 536;
-export const TF1_LINK = 'https://oq.ee/channel/536/play';
+const instantRetries = { attempts: 3, retryDelayMs: 0 };
+export const instantPower = { ...instantRetries, connectTimeoutMs: 0, powerTimeoutMs: 0 };
 
-export const instantPolicy: WatchPolicy = {
-  attempts: 3,
-  retryDelayMs: 0,
-  connectTimeoutMs: 0,
-  wakeTimeoutMs: 0,
-  settleAfterWakeMs: 0,
-  launchTimeoutMs: 0,
-};
-
-export function watchTf1(): WatchRequest {
-  return { channelId: TF1, signal: new AbortController().signal, onAttemptFailed: () => {} };
+export function commandRun(): CommandRun {
+  return { signal: new AbortController().signal, onAttemptFailed: () => {} };
 }
 
 interface FakePlayerSetup {
@@ -41,8 +32,10 @@ export class FakePlayer implements Player {
     return this.current;
   }
 
-  async waitUntil(isReached: (state: PlayerState) => boolean): Promise<void> {
-    if (!isReached(this.current)) throw new PlayerTimeout();
+  onStateChange(): void {}
+
+  async waitUntil(isReached: (state: PlayerState) => boolean, { failure }: Wait): Promise<void> {
+    if (!isReached(this.current)) throw new PlayerTimeout(failure);
   }
 
   async pressPower(): Promise<void> {
