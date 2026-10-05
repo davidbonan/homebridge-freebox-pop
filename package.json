@@ -1,7 +1,7 @@
 {
   "name": "homebridge-freebox-pop",
   "displayName": "Freebox Pop",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "HomeKit switches that wake a Freebox Pop player and tune it to a TV channel, with retries.",
   "type": "module",
   "main": "dist/index.js",

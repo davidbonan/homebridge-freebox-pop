@@ -24,7 +24,7 @@ async function togglePowerUnless(
   await player.waitUntil(isReady, { timeoutMs: connectTimeoutMs, signal, failure: 'player unreachable' });
   if (isReached(player.state())) return false;
 
-  await player.pressPower();
+  await player.pressKey('power');
   await player.waitUntil(isReached, { timeoutMs: powerTimeoutMs, signal, failure: 'player did not change power state' });
   return true;
 }

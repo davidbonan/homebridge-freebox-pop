@@ -1,5 +1,7 @@
 import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformConfig } from 'homebridge';
+import type { ChannelConfig } from './channels/channelConfig.ts';
 import { watchChannel } from './channels/watching/application/watchChannel.ts';
+import { addTelevisionServices } from './freeboxPopTelevision.ts';
 import type { Player } from './player/connection/domain/player.ts';
 import type { CommandRun } from './player/connection/domain/retriedCommand.ts';
 import { AndroidTvPlayer } from './player/connection/infrastructure/androidTvPlayer.ts';
@@ -9,11 +11,9 @@ import { turnPlayerOff, turnPlayerOn } from './player/power/application/playerPo
 export const PLUGIN_NAME = 'homebridge-freebox-pop';
 export const PLATFORM_NAME = 'FreeboxPop';
 const POWER_SWITCH_NAME = 'Freebox Player';
-
-interface ChannelConfig {
-  name: string;
-  oqeeChannelId: number;
-}
+const TELEVISION_NAME = 'Freebox Pop';
+// hap's Categories.TV_SET_TOP_BOX, a const enum that cannot be read under verbatimModuleSyntax
+const SET_TOP_BOX_CATEGORY = 35;
 
 interface FreeboxPopConfig extends PlatformConfig {
   channels?: ChannelConfig[];
@@ -50,8 +50,24 @@ export class FreeboxPopPlatform implements DynamicPlatformPlugin {
     player.connect();
     this.api.on('shutdown', () => player.close());
 
-    const channelSwitches = (this.config.channels ?? []).map((channel) => this.exposeChannelSwitch(player, channel));
+    const channels = this.config.channels ?? [];
+    const channelSwitches = channels.map((channel) => this.exposeChannelSwitch(player, channel));
     this.unregisterAccessoriesNotIn([this.exposePowerSwitch(player), ...channelSwitches]);
+    this.publishTelevision(player, channels);
+  }
+
+  // HomeKit accepts a television only as an accessory of its own, outside the bridge
+  private publishTelevision(player: Player, channels: ChannelConfig[]): void {
+    const id = this.api.hap.uuid.generate(`${PLATFORM_NAME}:television`);
+    const accessory = new this.api.platformAccessory(TELEVISION_NAME, id, SET_TOP_BOX_CATEGORY);
+
+    addTelevisionServices(accessory, this.api.hap, {
+      player,
+      channels,
+      log: this.log,
+      runCommand: (name, command) => this.runCommand(name, command),
+    });
+    this.api.publishExternalAccessories(PLUGIN_NAME, [accessory]);
   }
 
   private exposeChannelSwitch(player: Player, channel: ChannelConfig): PlatformAccessory {

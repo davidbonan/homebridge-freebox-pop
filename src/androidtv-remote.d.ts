@@ -7,8 +7,25 @@ declare module 'androidtv-remote/dist/remote/RemoteMessageManager.js' {
     remoteImeKeyInject?: { appInfo?: { appPackage?: string | null } | null } | null;
   }
 
+  type KeyCodeName =
+    | 'KEYCODE_POWER'
+    | 'KEYCODE_DPAD_UP'
+    | 'KEYCODE_DPAD_DOWN'
+    | 'KEYCODE_DPAD_LEFT'
+    | 'KEYCODE_DPAD_RIGHT'
+    | 'KEYCODE_DPAD_CENTER'
+    | 'KEYCODE_BACK'
+    | 'KEYCODE_MEDIA_PLAY_PAUSE'
+    | 'KEYCODE_INFO'
+    | 'KEYCODE_MEDIA_REWIND'
+    | 'KEYCODE_MEDIA_FAST_FORWARD'
+    | 'KEYCODE_MEDIA_NEXT'
+    | 'KEYCODE_MEDIA_PREVIOUS'
+    | 'KEYCODE_VOLUME_UP'
+    | 'KEYCODE_VOLUME_DOWN';
+
   interface RemoteMessageManager {
-    RemoteKeyCode: { KEYCODE_POWER: number };
+    RemoteKeyCode: Record<KeyCodeName, number>;
     RemoteDirection: { SHORT: number };
     parse(frame: Uint8Array): RemoteMessage;
     createRemoteConfigure(): Uint8Array;

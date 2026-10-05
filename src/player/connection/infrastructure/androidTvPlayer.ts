@@ -5,16 +5,34 @@ import type { RemoteMessage } from 'androidtv-remote/dist/remote/RemoteMessageMa
 import type { Logging } from 'homebridge';
 import type { PlayerCredentials } from '../../pairedPlayerFile.ts';
 import { PlayerTimeout, PlayerUnreachable } from '../domain/player.ts';
-import type { Player, PlayerState, Wait } from '../domain/player.ts';
+import type { Player, PlayerKey, PlayerState, Wait } from '../domain/player.ts';
 import { splitFrames } from './remoteMessageFrames.ts';
 
 const { remoteMessageManager } = remoteMessages;
+const { RemoteDirection, RemoteKeyCode } = remoteMessageManager;
 
 const REMOTE_PORT = 6466;
 const ACTIVE_FEATURES = 622;
 const SILENCE_LIMIT_MS = 15_000;
 const RECONNECT_MIN_MS = 1_000;
 const RECONNECT_MAX_MS = 10_000;
+const KEY_CODES: Record<PlayerKey, number> = {
+  power: RemoteKeyCode.KEYCODE_POWER,
+  up: RemoteKeyCode.KEYCODE_DPAD_UP,
+  down: RemoteKeyCode.KEYCODE_DPAD_DOWN,
+  left: RemoteKeyCode.KEYCODE_DPAD_LEFT,
+  right: RemoteKeyCode.KEYCODE_DPAD_RIGHT,
+  select: RemoteKeyCode.KEYCODE_DPAD_CENTER,
+  back: RemoteKeyCode.KEYCODE_BACK,
+  playPause: RemoteKeyCode.KEYCODE_MEDIA_PLAY_PAUSE,
+  info: RemoteKeyCode.KEYCODE_INFO,
+  rewind: RemoteKeyCode.KEYCODE_MEDIA_REWIND,
+  fastForward: RemoteKeyCode.KEYCODE_MEDIA_FAST_FORWARD,
+  next: RemoteKeyCode.KEYCODE_MEDIA_NEXT,
+  previous: RemoteKeyCode.KEYCODE_MEDIA_PREVIOUS,
+  volumeUp: RemoteKeyCode.KEYCODE_VOLUME_UP,
+  volumeDown: RemoteKeyCode.KEYCODE_VOLUME_DOWN,
+};
 const UNREACHABLE: PlayerState = { isReady: false, isPowered: false, foregroundApp: undefined };
 
 export class AndroidTvPlayer implements Player {
@@ -91,9 +109,8 @@ export class AndroidTvPlayer implements Player {
     });
   }
 
-  pressPower(): Promise<void> {
-    const { RemoteDirection, RemoteKeyCode } = remoteMessageManager;
-    return this.send(remoteMessageManager.createRemoteKeyInject(RemoteDirection.SHORT, RemoteKeyCode.KEYCODE_POWER));
+  pressKey(key: PlayerKey): Promise<void> {
+    return this.send(remoteMessageManager.createRemoteKeyInject(RemoteDirection.SHORT, KEY_CODES[key]));
   }
 
   openLink(link: string): Promise<void> {

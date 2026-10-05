@@ -1,6 +1,6 @@
 import { OQEE_APP } from '../../src/channels/watching/domain/oqee.ts';
 import { PlayerTimeout, PlayerUnreachable } from '../../src/player/connection/domain/player.ts';
-import type { Player, PlayerState, Wait } from '../../src/player/connection/domain/player.ts';
+import type { Player, PlayerKey, PlayerState, Wait } from '../../src/player/connection/domain/player.ts';
 import type { CommandRun } from '../../src/player/connection/domain/retriedCommand.ts';
 
 const instantRetries = { attempts: 3, retryDelayMs: 0 };
@@ -38,9 +38,9 @@ export class FakePlayer implements Player {
     if (!isReached(this.current)) throw new PlayerTimeout(failure);
   }
 
-  async pressPower(): Promise<void> {
-    this.commands.push('power');
-    this.current = { ...this.current, isPowered: !this.current.isPowered };
+  async pressKey(key: PlayerKey): Promise<void> {
+    this.commands.push(key);
+    if (key === 'power') this.current = { ...this.current, isPowered: !this.current.isPowered };
   }
 
   async openLink(link: string): Promise<void> {

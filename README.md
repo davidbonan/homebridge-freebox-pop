@@ -1,6 +1,6 @@
 # homebridge-freebox-pop
 
-Homebridge plugin for a **Freebox Pop player**. It exposes one HomeKit switch per TV channel, and one power switch. Turning a channel switch on wakes the player and tunes it to that channel, so a HomeKit automation can say "at 8 pm, put TF1 on"; turning the power switch off puts the player to sleep.
+Homebridge plugin for a **Freebox Pop player**. It exposes one HomeKit switch per TV channel, one power switch, and a television that the iPhone remote can drive. Turning a channel switch on wakes the player and tunes it to that channel, so a HomeKit automation can say "at 8 pm, put TF1 on"; turning the power switch off puts the player to sleep.
 
 It is built to be left alone: the connection to the player is kept alive and repaired in the background, and every command is retried until it is confirmed.
 
@@ -32,6 +32,19 @@ Power is a toggle key on the remote, so the plugin only presses it when the play
 
 Only one command runs at a time: a new one, from any switch, cancels the one in progress.
 
+### Television and iPhone remote
+
+A television named **Freebox Pop** makes the player show up in the iPhone's Control Center remote.
+
+- Arrows, select, back, play/pause and info are sent to the player as remote keys.
+- The iPhone's volume buttons send volume up and down while the remote is open.
+- Each configured channel is an input of the television; picking one tunes to it like its switch does.
+- Its power button behaves like the power switch.
+
+A key is sent once and not retried: if the player is unreachable, the press is dropped and logged.
+
+HomeKit only accepts a television outside the bridge, so it has to be added once by hand: in the Home app, **Add Accessory** → **More options**, pick **Freebox Pop**, and enter the Homebridge PIN.
+
 ## Requirements
 
 - Homebridge 1.8 or 2.x, Node.js 22.18 or newer.
@@ -48,13 +61,13 @@ The plugin is not on npm yet. Build a package and install it by hand:
 git clone https://github.com/davidbonan/homebridge-freebox-pop.git
 cd homebridge-freebox-pop
 npm install
-npm pack                      # produces homebridge-freebox-pop-0.1.0.tgz
+npm pack                      # produces homebridge-freebox-pop-0.3.0.tgz
 ```
 
 Copy the `.tgz` to the Homebridge machine, then, from the Homebridge storage folder (`/var/lib/homebridge` on the official Raspberry Pi image):
 
 ```sh
-npm install /path/to/homebridge-freebox-pop-0.1.0.tgz
+npm install /path/to/homebridge-freebox-pop-0.3.0.tgz
 ```
 
 ## Set up in the Homebridge UI
@@ -116,6 +129,7 @@ All messages are in the Homebridge log, prefixed with `[FreeboxPop]`.
 
 - **Waking from standby.** Tuning a channel and turning the power switch on while the player sleeps.
 - **The power switch** as a whole, including whether the player stays reachable in light standby.
+- **The television and iPhone remote**: keys, volume and inputs have not been tried on a player yet.
 
 Confirmed on a real player: the channel link `https://oq.ee/channel/<id>/play` (the format from [Freebox bug 37971](https://dev.freebox.fr/bugs/task/37971)), the on-screen app report, and the network search.
 
@@ -137,6 +151,7 @@ The code is organised by feature, then by layer:
 
 ```
 src/freeboxPopPlatform.ts   Homebridge platform: the HomeKit switches
+src/freeboxPopTelevision.ts HomeKit television: power, inputs, remote keys
 src/channels/watching/
   domain/                   OQEE link
   application/              watchChannel: wake, open the channel, check
