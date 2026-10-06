@@ -16,6 +16,7 @@ When a channel switch is turned on:
 2. If the player is asleep, press Power and wait until it reports being awake.
 3. Open the channel in OQEE through its link, `https://oq.ee/channel/<id>/play`.
 4. Check that OQEE is the app on screen.
+5. If the player had to be woken, open the channel again 10 seconds later: OQEE coming out of standby returns to its last channel and can drop the first link.
 
 If any step fails, the whole sequence is retried, up to 4 attempts with a growing pause. The switch turns itself back off when the sequence ends, whether it succeeded or gave up. The outcome is written to the Homebridge log.
 
@@ -55,19 +56,12 @@ HomeKit only accepts a television outside the bridge, so it has to be added once
 
 ## Install
 
-The plugin is not on npm yet. Build a package and install it by hand:
+In the Homebridge UI, open **Plugins**, search for `homebridge-freebox-pop` and install it.
+
+From a terminal, in the Homebridge storage folder (`/var/lib/homebridge` on the official Raspberry Pi image):
 
 ```sh
-git clone https://github.com/davidbonan/homebridge-freebox-pop.git
-cd homebridge-freebox-pop
-npm install
-npm pack                      # produces homebridge-freebox-pop-0.3.1.tgz
-```
-
-Copy the `.tgz` to the Homebridge machine, then, from the Homebridge storage folder (`/var/lib/homebridge` on the official Raspberry Pi image):
-
-```sh
-npm install /path/to/homebridge-freebox-pop-0.3.1.tgz
+npm install homebridge-freebox-pop
 ```
 
 ## Set up in the Homebridge UI
@@ -127,10 +121,9 @@ All messages are in the Homebridge log, prefixed with `[FreeboxPop]`.
 
 ## Not yet validated
 
-- **Waking after a long standby.** Whether the player stays reachable after a night in light standby.
 - **The television's volume buttons and inputs.** The remote drives the player, but these two have not been checked one by one.
 
-Confirmed on a real player: the channel link `https://oq.ee/channel/<id>/play` (the format from [Freebox bug 37971](https://dev.freebox.fr/bugs/task/37971)), the on-screen app report, the network search, the power switch in both directions, and the television in the iPhone remote.
+Confirmed on a real player: the channel link `https://oq.ee/channel/<id>/play` (the format from [Freebox bug 37971](https://dev.freebox.fr/bugs/task/37971)), the on-screen app report, the network search, the power switch in both directions, waking after a night in light standby, and the television in the iPhone remote.
 
 ## Limitations
 

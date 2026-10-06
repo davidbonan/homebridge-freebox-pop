@@ -13,6 +13,7 @@ export interface WatchPolicy extends RetryPolicy {
   connectTimeoutMs: number;
   powerTimeoutMs: number;
   settleAfterWakeMs: number;
+  resumeAfterWakeMs: number;
   launchTimeoutMs: number;
 }
 
@@ -22,6 +23,7 @@ export const defaultWatchPolicy: WatchPolicy = {
   connectTimeoutMs: 20_000,
   powerTimeoutMs: 15_000,
   settleAfterWakeMs: 3_000,
+  resumeAfterWakeMs: 10_000,
   launchTimeoutMs: 15_000,
 };
 
@@ -33,10 +35,19 @@ export function watchChannel(
   return retried(() => tuneOnce(player, request, policy), request, policy);
 }
 
-async function tuneOnce(player: Player, { channelId, signal }: WatchRequest, policy: WatchPolicy): Promise<void> {
+async function tuneOnce(player: Player, request: WatchRequest, policy: WatchPolicy): Promise<void> {
+  const { signal } = request;
   const { wasAsleep } = await wakeUp(player, { ...policy, signal });
-  if (wasAsleep) await sleep(policy.settleAfterWakeMs, undefined, { signal });
+  if (!wasAsleep) return openChannel(player, request, policy);
 
+  await sleep(policy.settleAfterWakeMs, undefined, { signal });
+  await openChannel(player, request, policy);
+  // OQEE resuming from standby goes back to its last channel and drops an early link
+  await sleep(policy.resumeAfterWakeMs, undefined, { signal });
+  await openChannel(player, request, policy);
+}
+
+async function openChannel(player: Player, { channelId, signal }: WatchRequest, policy: WatchPolicy): Promise<void> {
   await player.openLink(oqeeChannelLink(channelId));
   await player.waitUntil((state) => state.foregroundApp === OQEE_APP, {
     timeoutMs: policy.launchTimeoutMs,
