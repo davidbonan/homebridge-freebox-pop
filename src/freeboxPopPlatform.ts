@@ -7,11 +7,9 @@ import type { Player } from './player/connection/domain/player.ts';
 import type { CommandRun } from './player/connection/domain/retriedCommand.ts';
 import { AndroidTvPlayer } from './player/connection/infrastructure/androidTvPlayer.ts';
 import { readPairedPlayer } from './player/pairedPlayerFile.ts';
-import { turnPlayerOff, turnPlayerOn } from './player/power/application/playerPowerCommands.ts';
 
 export const PLUGIN_NAME = 'homebridge-freebox-pop';
 export const PLATFORM_NAME = 'FreeboxPop';
-const POWER_SWITCH_NAME = 'Freebox Player';
 const TELEVISION_NAME = 'Freebox Pop';
 // hap's Categories.TV_SET_TOP_BOX, a const enum that cannot be read under verbatimModuleSyntax
 const SET_TOP_BOX_CATEGORY = 35;
@@ -53,7 +51,7 @@ export class FreeboxPopPlatform implements DynamicPlatformPlugin {
 
     const channels = this.config.channels ?? [];
     const channelSwitches = channels.map((channel) => this.exposeChannelSwitch(player, channel));
-    this.unregisterAccessoriesNotIn([this.exposePowerSwitch(player), ...channelSwitches]);
+    this.unregisterAccessoriesNotIn(channelSwitches);
     this.publishTelevision(player, channels);
   }
 
@@ -85,18 +83,6 @@ export class FreeboxPopPlatform implements DynamicPlatformPlugin {
       void sequence.finally(() => {
         if (latestSequence === sequence) isOn.updateValue(false);
       });
-    });
-    return accessory;
-  }
-
-  private exposePowerSwitch(player: Player): PlatformAccessory {
-    const { accessory, isOn } = this.switchAccessory(POWER_SWITCH_NAME, 'power');
-
-    isOn.updateValue(player.state().isPowered);
-    player.onStateChange((state) => isOn.updateValue(state.isPowered));
-    isOn.onSet(async (isRequested) => {
-      const switchPower = (run: CommandRun) => (isRequested ? turnPlayerOn(player, run) : turnPlayerOff(player, run));
-      void this.runCommand(POWER_SWITCH_NAME, switchPower).finally(() => isOn.updateValue(player.state().isPowered));
     });
     return accessory;
   }

@@ -12,43 +12,65 @@ export interface TelevisionControls {
   runCommand(name: string, command: (run: CommandRun) => Promise<void>): Promise<void>;
 }
 
+interface ChannelSelection {
+  channel: ChannelConfig | undefined;
+}
+
 export function addTelevisionServices(accessory: PlatformAccessory, hap: HAP, controls: TelevisionControls): void {
   const { Service, Characteristic } = hap;
   const name = accessory.displayName;
   const television = accessory.addService(Service.Television, name);
+  const selection: ChannelSelection = { channel: controls.channels[0] };
 
   television.setCharacteristic(Characteristic.ConfiguredName, name);
   television.setCharacteristic(Characteristic.SleepDiscoveryMode, Characteristic.SleepDiscoveryMode.ALWAYS_DISCOVERABLE);
-  followPower(television, hap, controls);
-  tuneSelectedChannel(television, hap, controls);
+  followPower(television, hap, controls, selection);
+  tuneSelectedChannel(television, hap, controls, selection);
   relayKeys(television.getCharacteristic(Characteristic.RemoteKey), navigationKeys(hap), controls);
 
   television.addLinkedService(volumeService(accessory, hap, controls));
   for (const channel of controls.channels) television.addLinkedService(channelInput(accessory, hap, channel));
 }
 
-function followPower(television: Service, { Characteristic }: HAP, { player, runCommand }: TelevisionControls): void {
+function followPower(
+  television: Service,
+  { Characteristic }: HAP,
+  { player, runCommand }: TelevisionControls,
+  selection: ChannelSelection,
+): void {
   const { ACTIVE, INACTIVE } = Characteristic.Active;
   const active = television.getCharacteristic(Characteristic.Active);
   const shown = () => (player.state().isPowered ? ACTIVE : INACTIVE);
+  // the Power key wakes the player but leaves the TV off: opening a channel is what turns the TV on
+  const turnOn = (run: CommandRun) => {
+    const { channel } = selection;
+    return channel ? watchChannel(player, { ...run, channelId: channel.oqeeChannelId }) : turnPlayerOn(player, run);
+  };
 
   active.updateValue(shown());
   player.onStateChange(() => active.updateValue(shown()));
   active.onSet(async (requested) => {
-    const switchPower = (run: CommandRun) => (requested === ACTIVE ? turnPlayerOn(player, run) : turnPlayerOff(player, run));
+    const switchPower = requested === ACTIVE ? turnOn : (run: CommandRun) => turnPlayerOff(player, run);
     void runCommand(television.displayName, switchPower).finally(() => active.updateValue(shown()));
   });
 }
 
-function tuneSelectedChannel(television: Service, { Characteristic }: HAP, controls: TelevisionControls): void {
-  const { player, channels, runCommand } = controls;
+function tuneSelectedChannel(
+  television: Service,
+  { Characteristic }: HAP,
+  { player, channels, runCommand }: TelevisionControls,
+  selection: ChannelSelection,
+): void {
+  const selected = television.getCharacteristic(Characteristic.ActiveIdentifier);
   const channelsByIdentifier = new Map<CharacteristicValue, ChannelConfig>(
     channels.map((channel) => [channel.oqeeChannelId, channel]),
   );
 
-  television.getCharacteristic(Characteristic.ActiveIdentifier).onSet(async (identifier) => {
+  if (selection.channel) selected.updateValue(selection.channel.oqeeChannelId);
+  selected.onSet(async (identifier) => {
     const channel = channelsByIdentifier.get(identifier);
     if (!channel) return;
+    selection.channel = channel;
     void runCommand(channel.name, (run) => watchChannel(player, { ...run, channelId: channel.oqeeChannelId }));
   });
 }

@@ -1,10 +1,10 @@
 # homebridge-freebox-pop
 
-Homebridge plugin for a **Freebox Pop player**. It exposes one HomeKit switch per TV channel, one power switch, and a television that the iPhone remote can drive. Turning a channel switch on wakes the player and tunes it to that channel, so a HomeKit automation can say "at 8 pm, put TF1 on"; turning the power switch off puts the player to sleep.
+Homebridge plugin for a **Freebox Pop player**. It exposes one HomeKit switch per TV channel and a television that the iPhone remote can drive. Turning a channel switch on wakes the player and tunes it to that channel, so a HomeKit automation can say "at 8 pm, put TF1 on"; turning the television off puts the player to sleep.
 
 It is built to be left alone: the connection to the player is kept alive and repaired in the background, and every command is retried until it is confirmed.
 
-> **Status: prototype.** Pairing, network search, channel switching, the power switch and the iPhone remote are confirmed on a real Freebox Pop. See [Not yet validated](#not-yet-validated) for what is left.
+> **Status: prototype.** Pairing, network search, channel switching and the iPhone remote are confirmed on a real Freebox Pop. See [Not yet validated](#not-yet-validated) for what is left.
 
 ## What the switches do
 
@@ -22,16 +22,7 @@ If any step fails, the whole sequence is retried, up to 4 attempts with a growin
 
 Turning a channel switch off cancels the sequence of that channel, and nothing else.
 
-### Power switch
-
-A switch named **Freebox Player** follows the player: on when it is awake, off when it sleeps.
-
-- Turning it **off** puts the player to sleep. With HDMI-CEC enabled, the TV turns off with it.
-- Turning it **on** wakes the player without changing what is on screen.
-
-Power is a toggle key on the remote, so the plugin only presses it when the player is not already in the requested state. The same retries apply.
-
-Only one command runs at a time: a new one, from any switch, cancels the one in progress. A Power press already sent is seen through first, so that a scene turning the player on and picking a channel presses Power once.
+Only one command runs at a time: a new one, from a switch or from the television, cancels the one in progress. A Power press already sent is seen through first, so that a scene turning the television on and picking a channel presses Power once.
 
 ### Television and iPhone remote
 
@@ -40,7 +31,10 @@ A television named **Freebox Pop** makes the player show up in the iPhone's Cont
 - Arrows, select, back, play/pause and info are sent to the player as remote keys.
 - The iPhone's volume buttons send volume up and down while the remote is open.
 - Each configured channel is an input of the television; picking one tunes to it like its switch does.
-- Its power button behaves like the power switch.
+- Turning it **off** puts the player to sleep. With HDMI-CEC enabled, the TV turns off with it.
+- Turning it **on** wakes the player and opens the selected input, the first channel until one is picked: the Power key alone wakes the player after a long standby but leaves the TV off. Without any channel configured, it only wakes the player.
+
+Power is a toggle key on the remote, so the plugin only presses it when the player is not already in the requested state. The same retries as for a channel switch apply.
 
 A key is sent once and not retried: if the player is unreachable, the press is dropped and logged.
 
@@ -122,8 +116,9 @@ All messages are in the Homebridge log, prefixed with `[FreeboxPop]`.
 ## Not yet validated
 
 - **The television's volume buttons and inputs.** The remote drives the player, but these two have not been checked one by one.
+- **Turning the television on after a night of standby.** It opens a channel the way a channel switch does, which is known to turn the TV on, but the power button itself has not been checked yet.
 
-Confirmed on a real player: the channel link `https://oq.ee/channel/<id>/play` (the format from [Freebox bug 37971](https://dev.freebox.fr/bugs/task/37971)), the on-screen app report, the network search, the power switch in both directions, waking after a night in light standby, and the television in the iPhone remote.
+Confirmed on a real player: the channel link `https://oq.ee/channel/<id>/play` (the format from [Freebox bug 37971](https://dev.freebox.fr/bugs/task/37971)), the on-screen app report, the network search, putting the player to sleep, waking after a night in light standby, and the television in the iPhone remote.
 
 ## Limitations
 
