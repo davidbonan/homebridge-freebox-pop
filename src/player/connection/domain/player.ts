@@ -2,6 +2,7 @@ export interface PlayerState {
   isReady: boolean;
   isPowered: boolean;
   foregroundApp: string | undefined;
+  awakeSince: number | undefined;
 }
 
 export type PlayerKey =

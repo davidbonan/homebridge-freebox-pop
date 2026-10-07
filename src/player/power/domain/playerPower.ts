@@ -6,25 +6,31 @@ export interface PowerWait {
   signal: AbortSignal;
 }
 
-export async function wakeUp(player: Player, wait: PowerWait): Promise<{ wasAsleep: boolean }> {
-  const hasToggled = await togglePowerUnless(player, (state) => state.isPowered, wait);
-  return { wasAsleep: hasToggled };
+const UNINTERRUPTED = new AbortController().signal;
+
+export function wakeUp(player: Player, wait: PowerWait): Promise<void> {
+  return togglePowerUnless(player, (state) => state.isPowered, wait);
 }
 
-export async function putToSleep(player: Player, wait: PowerWait): Promise<void> {
-  await togglePowerUnless(player, (state) => !state.isPowered, wait);
+export function putToSleep(player: Player, wait: PowerWait): Promise<void> {
+  return togglePowerUnless(player, (state) => !state.isPowered, wait);
 }
 
 async function togglePowerUnless(
   player: Player,
   isReached: (state: PlayerState) => boolean,
   { connectTimeoutMs, powerTimeoutMs, signal }: PowerWait,
-): Promise<boolean> {
+): Promise<void> {
   const isReady = (state: PlayerState) => state.isReady;
   await player.waitUntil(isReady, { timeoutMs: connectTimeoutMs, signal, failure: 'player unreachable' });
-  if (isReached(player.state())) return false;
+  if (isReached(player.state())) return;
 
   await player.pressKey('power');
-  await player.waitUntil(isReached, { timeoutMs: powerTimeoutMs, signal, failure: 'player did not change power state' });
-  return true;
+  // POWER is a toggle: whoever takes over before the new state is reported would press it back
+  await player.waitUntil(isReached, {
+    timeoutMs: powerTimeoutMs,
+    signal: UNINTERRUPTED,
+    failure: 'player did not change power state',
+  });
+  signal.throwIfAborted();
 }

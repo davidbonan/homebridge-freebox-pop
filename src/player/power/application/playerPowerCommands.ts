@@ -16,7 +16,7 @@ export const defaultPowerPolicy: PowerPolicy = {
 };
 
 export function turnPlayerOn(player: Player, run: CommandRun, policy: PowerPolicy = defaultPowerPolicy): Promise<void> {
-  return retried(async () => void (await wakeUp(player, { ...policy, signal: run.signal })), run, policy);
+  return retried(() => wakeUp(player, { ...policy, signal: run.signal }), run, policy);
 }
 
 export function turnPlayerOff(player: Player, run: CommandRun, policy: PowerPolicy = defaultPowerPolicy): Promise<void> {

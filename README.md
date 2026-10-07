@@ -16,11 +16,11 @@ When a channel switch is turned on:
 2. If the player is asleep, press Power and wait until it reports being awake.
 3. Open the channel in OQEE through its link, `https://oq.ee/channel/<id>/play`.
 4. Check that OQEE is the app on screen.
-5. If the player had to be woken, open the channel again 10 seconds later: OQEE coming out of standby returns to its last channel and can drop the first link.
+5. If the player woke less than 13 seconds ago, whoever woke it, open the channel again 10 seconds later: OQEE coming out of standby returns to its last channel and can drop the first link.
 
 If any step fails, the whole sequence is retried, up to 4 attempts with a growing pause. The switch turns itself back off when the sequence ends, whether it succeeded or gave up. The outcome is written to the Homebridge log.
 
-Turning a channel switch off cancels its sequence.
+Turning a channel switch off cancels the sequence of that channel, and nothing else.
 
 ### Power switch
 
@@ -31,7 +31,7 @@ A switch named **Freebox Player** follows the player: on when it is awake, off w
 
 Power is a toggle key on the remote, so the plugin only presses it when the player is not already in the requested state. The same retries apply.
 
-Only one command runs at a time: a new one, from any switch, cancels the one in progress.
+Only one command runs at a time: a new one, from any switch, cancels the one in progress. A Power press already sent is seen through first, so that a scene turning the player on and picking a channel presses Power once.
 
 ### Television and iPhone remote
 
@@ -148,7 +148,7 @@ src/channels/watching/
   domain/                   OQEE link
   application/              watchChannel: wake, open the channel, check
 src/player/
-  connection/               Player contract, retries, Android TV Remote session
+  connection/               Player contract, retries, one command at a time, Android TV Remote session
   power/                    wake and sleep, turnPlayerOn / turnPlayerOff
   discovery/                mDNS search for players
   pairing/                  pairing with a player

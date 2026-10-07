@@ -2,6 +2,7 @@ import type { API, Characteristic, DynamicPlatformPlugin, Logging, PlatformAcces
 import type { ChannelConfig } from './channels/channelConfig.ts';
 import { watchChannel } from './channels/watching/application/watchChannel.ts';
 import { addTelevisionServices } from './freeboxPopTelevision.ts';
+import { ExclusiveCommands } from './player/connection/domain/exclusiveCommands.ts';
 import type { Player } from './player/connection/domain/player.ts';
 import type { CommandRun } from './player/connection/domain/retriedCommand.ts';
 import { AndroidTvPlayer } from './player/connection/infrastructure/androidTvPlayer.ts';
@@ -29,7 +30,7 @@ export class FreeboxPopPlatform implements DynamicPlatformPlugin {
   private readonly config: FreeboxPopConfig;
   private readonly api: API;
   private readonly restoredAccessories = new Map<string, PlatformAccessory>();
-  private commandInProgress: AbortController | undefined;
+  private readonly commands = new ExclusiveCommands();
 
   constructor(log: Logging, config: FreeboxPopConfig, api: API) {
     this.log = log;
@@ -73,11 +74,17 @@ export class FreeboxPopPlatform implements DynamicPlatformPlugin {
   private exposeChannelSwitch(player: Player, channel: ChannelConfig): PlatformAccessory {
     const { accessory, isOn } = this.switchAccessory(channel.name, `channel:${channel.oqeeChannelId}`);
 
+    let latestSequence: Promise<void> | undefined;
+
     isOn.updateValue(false);
     isOn.onSet(async (isRequested) => {
-      if (!isRequested) return this.commandInProgress?.abort();
+      if (!isRequested) return this.commands.cancel(channel.name);
       const watch = (run: CommandRun) => watchChannel(player, { ...run, channelId: channel.oqeeChannelId });
-      void this.runCommand(channel.name, watch).finally(() => isOn.updateValue(false));
+      const sequence = this.runCommand(channel.name, watch);
+      latestSequence = sequence;
+      void sequence.finally(() => {
+        if (latestSequence === sequence) isOn.updateValue(false);
+      });
     });
     return accessory;
   }
@@ -115,17 +122,12 @@ export class FreeboxPopPlatform implements DynamicPlatformPlugin {
 
   // answers HomeKit at once and works in the background: a command outlasts HomeKit's write timeout
   private async runCommand(name: string, command: (run: CommandRun) => Promise<void>): Promise<void> {
-    this.commandInProgress?.abort();
-    const inProgress = new AbortController();
-    this.commandInProgress = inProgress;
+    const onAttemptFailed = (attempt: number, error: unknown) => this.log.warn(`${name}: attempt ${attempt} failed, retrying`, error);
     try {
-      await command({
-        signal: inProgress.signal,
-        onAttemptFailed: (attempt, error) => this.log.warn(`${name}: attempt ${attempt} failed, retrying`, error),
-      });
-      this.log.info(`${name}: done`);
+      const outcome = await this.commands.run(name, (signal) => command({ signal, onAttemptFailed }));
+      if (outcome === 'done') this.log.info(`${name}: done`);
     } catch (error) {
-      if (!inProgress.signal.aborted) this.log.error(`${name}: gave up`, error);
+      this.log.error(`${name}: gave up`, error);
     }
   }
 }

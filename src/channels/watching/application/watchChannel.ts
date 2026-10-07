@@ -37,14 +37,20 @@ export function watchChannel(
 
 async function tuneOnce(player: Player, request: WatchRequest, policy: WatchPolicy): Promise<void> {
   const { signal } = request;
-  const { wasAsleep } = await wakeUp(player, { ...policy, signal });
-  if (!wasAsleep) return openChannel(player, request, policy);
+  await wakeUp(player, { ...policy, signal });
+  const isOqeeResuming = msSinceWake(player) < policy.settleAfterWakeMs + policy.resumeAfterWakeMs;
+  if (!isOqeeResuming) return openChannel(player, request, policy);
 
-  await sleep(policy.settleAfterWakeMs, undefined, { signal });
+  await sleep(Math.max(0, policy.settleAfterWakeMs - msSinceWake(player)), undefined, { signal });
   await openChannel(player, request, policy);
   // OQEE resuming from standby goes back to its last channel and drops an early link
   await sleep(policy.resumeAfterWakeMs, undefined, { signal });
   await openChannel(player, request, policy);
+}
+
+function msSinceWake(player: Player): number {
+  const { awakeSince } = player.state();
+  return awakeSince === undefined ? Infinity : Date.now() - awakeSince;
 }
 
 async function openChannel(player: Player, { channelId, signal }: WatchRequest, policy: WatchPolicy): Promise<void> {

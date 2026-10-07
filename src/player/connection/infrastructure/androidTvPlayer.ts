@@ -12,7 +12,7 @@ const REMOTE_PORT = 6466;
 const SILENCE_LIMIT_MS = 15_000;
 const RECONNECT_MIN_MS = 1_000;
 const RECONNECT_MAX_MS = 10_000;
-const UNREACHABLE: PlayerState = { isReady: false, isPowered: false, foregroundApp: undefined };
+const UNREACHABLE: PlayerState = { isReady: false, isPowered: false, foregroundApp: undefined, awakeSince: undefined };
 
 export class AndroidTvPlayer implements Player {
   private readonly host: string;
@@ -131,7 +131,9 @@ export class AndroidTvPlayer implements Player {
   private markReady(isPowered: boolean): void {
     if (!this.current.isReady) this.log.info(`Player ${this.host} connected`);
     this.reconnectDelayMs = RECONNECT_MIN_MS;
-    this.update({ ...this.current, isReady: true, isPowered });
+    // a session cannot tell how long the player was awake before it: first seen awake counts as waking
+    const awakeSince = isPowered ? (this.current.awakeSince ?? Date.now()) : undefined;
+    this.update({ ...this.current, isReady: true, isPowered, awakeSince });
   }
 
   private reconnectLater(): void {
